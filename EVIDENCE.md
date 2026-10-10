@@ -1,24 +1,33 @@
 # Evidence
 
-Only verified work is recorded here. Each capstone requirement will receive a concrete proof as it is implemented.
+This file separates implemented functionality from capabilities that still require additional engineering or verification.
 
 ## Current evidence
 
 | Requirement | Status | Proof |
 |---|---|---|
-| Public dedicated GitHub repository | DONE | Repository is public and dedicated to this capstone. |
-| Runnable backend | DONE | `uvicorn app.main:app --host 0.0.0.0 --port 8000` is the documented run command. |
-| Structured image metadata schema | DONE | `POST /images/analyze` validates subject, category, attributes, caption, and confidence with Pydantic. |
-| Mismatch guard | PARTIAL | Automated test covers rejection of a wolf candidate for a fox post. A full evaluation proof will be added after the real embedding/provider layer is complete. |
-| Batch processing + retries | TODO | Not yet implemented. |
-| Cost tracking | TODO | Not yet implemented. |
-| Persistent database models/indexes | TODO | PostgreSQL layer not yet implemented. |
-| Review workflow | PARTIAL | Approve/reject/why endpoints exist; persistence and full audit trail are still TODO. |
-| Labeled evaluation set | TODO | Not yet implemented. |
-| Top-1 precision | TODO | Will be measured after the evaluation set is complete. |
+| Public dedicated GitHub repository | DONE | Public repository dedicated to this capstone. |
+| Runnable FastAPI backend | IMPLEMENTED | Startup seeds a demo catalogue; interactive API docs are available at /docs. |
+| Structured image metadata schema | IMPLEMENTED | POST /images/analyze validates subject, category, attributes, caption, and confidence. |
+| Offline relevance ranking | IMPLEMENTED | app/core.py provides stable feature-hashing similarity and ranked decisions. |
+| Clear subject mismatch guard | IMPLEMENTED | tests/test_api.py checks that wolf records are rejected for a fox post. |
+| Low-confidence rejection | IMPLEMENTED | Candidates below the configured confidence floor are rejected. |
+| Explanation endpoint | IMPLEMENTED | GET /review/{suggestion_id}/why returns score, decision, and reason after matching. |
+| Human review status | IMPLEMENTED IN MEMORY | Approve/reject endpoints update review status; state is lost on process restart. |
+| Automated API tests | ADDED, RUN PENDING | Six regression tests are committed; a successful CI run has not yet been verified. |
+| GitHub Actions workflow | ADDED, RUN PENDING | .github/workflows/tests.yml runs pytest on push, pull request, or manual dispatch. |
+| Raw image upload and vision-model inference | TODO | The API currently accepts structured metadata, not image files. |
+| Trained semantic embedding provider | TODO | Current matcher is a deterministic lexical baseline, not a trained semantic model. |
+| Batch processing and retries | TODO | Not implemented. |
+| Cost tracking | TODO | Not implemented. |
+| Persistent database and audit trail | TODO | Catalogue and review state are in memory. |
+| Labeled evaluation set and measured top-1 precision | TODO | No measured benchmark is claimed. |
 
-## Test command
+## Local verification
 
-```bash
-pytest -q
-```
+Run the following commands from the repository root:
+
+    python -m pip install -r requirements.txt
+    python -m pytest -q
+
+The test suite must pass in a local or CI environment before marking automated verification complete.
