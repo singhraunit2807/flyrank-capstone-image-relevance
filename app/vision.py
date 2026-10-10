@@ -42,7 +42,7 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"},
     }
     try:
-        response = httpx.post(url, params={"key": api_key}, json=payload, timeout=45)
+        response = httpx.post(url, headers={"x-goog-api-key": api_key}, json=payload, timeout=45)
         response.raise_for_status()
         data = response.json()
         text = data["candidates"][0]["content"]["parts"][0]["text"]
