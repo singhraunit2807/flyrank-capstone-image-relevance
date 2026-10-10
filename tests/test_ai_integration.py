@@ -39,11 +39,13 @@ def test_gemini_vision_provider_parses_structured_response(monkeypatch):
 
     def fake_post(url, **kwargs):
         captured["url"] = url
+        captured["headers"] = kwargs["headers"]
         captured["payload"] = kwargs["json"]
         return FakeResponse(payload)
 
     monkeypatch.setattr(vision.httpx, "post", fake_post)
     result = vision.analyze_image(b"fake-image-bytes", "image/png")
+    assert captured["headers"]["x-goog-api-key"] == "test-key"
     assert result["subject"] == "red fox"
     assert result["confidence"] == 0.96
     assert captured["payload"]["contents"][0]["parts"][1]["inline_data"]["data"] == base64.b64encode(b"fake-image-bytes").decode()
@@ -91,11 +93,13 @@ def test_gemini_embedding_provider_parses_vectors(monkeypatch):
     captured = {}
 
     def fake_post(url, **kwargs):
+        captured["headers"] = kwargs["headers"]
         captured["payload"] = kwargs["json"]
         return FakeResponse({"embeddings": [{"values": [1.0, 0.0]}, {"values": [0.0, 1.0]}]})
 
     monkeypatch.setattr(semantic.httpx, "post", fake_post)
     vectors = semantic._embed_batch(["fox article", "fox caption"])
+    assert captured["headers"]["x-goog-api-key"] == "test-key"
     assert vectors == [[1.0, 0.0], [0.0, 1.0]]
     assert captured["payload"]["requests"][0]["taskType"] == "RETRIEVAL_QUERY"
     assert captured["payload"]["requests"][1]["taskType"] == "RETRIEVAL_DOCUMENT"
