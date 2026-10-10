@@ -120,3 +120,19 @@ def test_upload_rejects_non_image() -> None:
         files={"file": ("notes.txt", b"not an image", "text/plain")},
     )
     assert response.status_code == 415
+
+
+def test_production_api_requires_bearer_token(monkeypatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("FLYRANK_API_TOKEN", raising=False)
+
+    missing_config = client.get("/images")
+    assert missing_config.status_code == 503
+    assert client.get("/health").status_code == 200
+
+    monkeypatch.setenv("FLYRANK_API_TOKEN", "test-only-token")
+    unauthenticated = client.get("/images")
+    assert unauthenticated.status_code == 401
+
+    authenticated = client.get("/images", headers={"Authorization": "Bearer test-only-token"})
+    assert authenticated.status_code == 200
