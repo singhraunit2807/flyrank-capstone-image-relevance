@@ -1,15 +1,17 @@
 from fastapi.testclient import TestClient
 
-from app.main import app, IMAGES, SUGGESTIONS, REVIEWS
+from app import database
+from app.main import app, IMAGES, SUGGESTIONS
 
 
 client = TestClient(app)
 
 
 def setup_function() -> None:
+    database.init_db()
+    database.clear_demo_state()
     IMAGES.clear()
     SUGGESTIONS.clear()
-    REVIEWS.clear()
 
 
 def seed() -> None:
@@ -28,7 +30,7 @@ def test_health_and_seed_catalogue() -> None:
     assert catalogue.json()["count"] >= 10
 
 
-def test_analyze_validates_confidence_range() -> None:
+def test_analyze_validates_confidence_range_and_persists() -> None:
     response = client.post(
         "/images/analyze",
         json={
@@ -41,6 +43,7 @@ def test_analyze_validates_confidence_range() -> None:
     )
     assert response.status_code == 200
     assert response.json()["metadata"]["confidence"] == 0.94
+    assert any(row["id"] == response.json()["id"] for row in client.get("/images").json()["images"])
 
     invalid = client.post(
         "/images/analyze",
@@ -50,7 +53,7 @@ def test_analyze_validates_confidence_range() -> None:
 
 
 def test_mismatch_guard_rejects_wolf_for_fox_post() -> None:
-    client.post(
+    response = client.post(
         "/images/analyze",
         json={
             "subject": "wolf",
@@ -66,8 +69,9 @@ def test_mismatch_guard_rejects_wolf_for_fox_post() -> None:
     )
     assert response.status_code == 200
     ranked = response.json()["ranked"]
-    assert ranked[0]["decision"] == "rejected"
-    assert "expected fox" in ranked[0]["reason"].lower()
+    wolf = next(item for item in ranked if item["image_id"] == response.json()["ranked"][0]["image_id"])
+    assert wolf["decision"] == "rejected"
+    assert "expected fox" in wolf["reason"].lower()
     assert response.json()["suggestion"] is None
 
 
@@ -86,7 +90,7 @@ def test_seeded_catalogue_returns_fox_and_rejects_wolf() -> None:
     assert all(item["decision"] == "rejected" for item in wolf_results)
 
 
-def test_review_approve_and_explanation() -> None:
+def test_review_status_persists_in_sqlite() -> None:
     seed()
     response = client.get("/posts/fox-post/images", params={"text": "red fox", "threshold": 0.0})
     suggestion_id = response.json()["ranked"][0]["suggestion_id"]
@@ -108,3 +112,11 @@ def test_post_id_mismatch_returns_400() -> None:
         json={"post_id": "body-id", "text": "red fox"},
     )
     assert response.status_code == 400
+
+
+def test_upload_rejects_non_image() -> None:
+    response = client.post(
+        "/images/upload",
+        files={"file": ("notes.txt", b"not an image", "text/plain")},
+    )
+    assert response.status_code == 415
