@@ -31,6 +31,30 @@ Open http://127.0.0.1:8000/docs.
 - SUPABASE_STORAGE_BUCKET: defaults to `flyrank-images`; the app creates this private bucket if it does not exist.
 - DATABASE_PATH and UPLOAD_DIR: local SQLite and upload paths used when managed services are not configured. On Vercel, these fall back to ephemeral `/tmp` paths.
 
+## Persistent free-tier hosting (Vercel + Supabase)
+
+Vercel's filesystem is temporary, so do not rely on SQLite or local image files for production data. For persistent storage:
+
+1. Create a Supabase project on its free plan at https://supabase.com/dashboard.
+2. In **Project Settings → Database**, copy the PostgreSQL connection string. Use the pooler connection string if recommended for serverless connections, and keep SSL enabled.
+3. In **Project Settings → API** (or **Connect**), copy the project URL and the server-side service-role/secret key. Never expose this key in browser code, GitHub, or chat.
+4. In **Storage**, create a private bucket named `flyrank-images`.
+5. In Vercel → Project → Settings → Environment Variables, add:
+   - `DATABASE_URL` = the Supabase PostgreSQL connection string
+   - `SUPABASE_URL` = the Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` = the server-side secret key
+   - `SUPABASE_STORAGE_BUCKET` = `flyrank-images`
+   - `GEMINI_API_KEY` = your Gemini key
+   - `GEMINI_MODEL` = `gemini-3.8-flash`
+   - `GEMINI_EMBEDDING_MODEL` = `gemini-embedding-001`
+   - `APP_ENV` = `production`
+   - `FLYRANK_API_TOKEN` = a long random secret
+6. Redeploy from Vercel. The application creates the required PostgreSQL tables on startup.
+7. Open `/health`. For persistent services, expect `database: postgresql` and `image_storage: supabase`; expect `vision_provider: gemini` after adding the Gemini key.
+8. Test a small image upload and a ranking request with `Authorization: Bearer <FLYRANK_API_TOKEN>`.
+
+The health endpoint is public and does not expose credentials. If `database` reports `sqlite_ephemeral_on_vercel` or `image_storage` reports `temporary_on_vercel`, the matching Supabase environment variables are missing or not applied to the active deployment. Redeploy after changing environment variables.
+
 ## Main endpoints
 - GET /health — reports catalogue count, provider configuration, and ranking mode.
 - GET /images — lists stored metadata.
