@@ -6,6 +6,7 @@ import json
 from fastapi.testclient import TestClient
 
 from app import database, vision, semantic
+from app import main as main_module
 from app.main import app, IMAGES
 
 
@@ -50,7 +51,7 @@ def test_gemini_vision_provider_parses_structured_response(monkeypatch):
 
 def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
     monkeypatch.setenv("UPLOAD_DIR", str(tmp_path))
-    monkeypatch.setattr(vision, "analyze_image", lambda content, mime: {
+    monkeypatch.setattr(main_module, "vision_analyze", lambda content, mime: {
         "subject": "red fox", "category": "animal",
         "attributes": ["orange fur"], "caption": "A red fox in woodland",
         "confidence": 0.95,
