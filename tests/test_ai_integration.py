@@ -50,6 +50,7 @@ def test_gemini_vision_provider_parses_structured_response(monkeypatch):
 
 
 def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
     monkeypatch.setattr(database, "DB_PATH", tmp_path / "restart-test.db")
     database.init_db()
@@ -71,6 +72,14 @@ def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
     assert (tmp_path / "uploads" / f"{payload['id']}.png").read_bytes() == b"\x89PNG\r\n\x1a\nfake-png-content"
     assert any(item["id"] == payload["id"] for item in client.get("/images").json()["images"])
 
+    # Complete the upload-to-match workflow using the explicit offline baseline.
+    match = client.post(
+        "/posts/fox-post/match",
+        json={"post_id": "fox-post", "text": "red fox in woodland", "threshold": 0.0},
+    )
+    assert match.status_code == 200, match.text
+    assert match.json()["suggestion"]["image_id"] == payload["id"]
+
     # Simulate a fresh process rebuilding its in-memory catalogue from SQLite.
     IMAGES.clear()
     IMAGES.extend(main_module._image_from_record(row) for row in database.load_images())
@@ -90,3 +99,13 @@ def test_gemini_embedding_provider_parses_vectors(monkeypatch):
     assert vectors == [[1.0, 0.0], [0.0, 1.0]]
     assert captured["payload"]["requests"][0]["taskType"] == "RETRIEVAL_QUERY"
     assert captured["payload"]["requests"][1]["taskType"] == "RETRIEVAL_DOCUMENT"
+
+
+
+def test_upload_rejects_spoofed_image_content(monkeypatch):
+    response = client.post(
+        "/images/upload",
+        files={"file": ("fake.png", b"this is not a PNG", "image/png")},
+    )
+    assert response.status_code == 415
+    assert "does not match" in response.json()["detail"]
