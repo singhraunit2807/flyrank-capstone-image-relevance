@@ -39,6 +39,22 @@ Open http://127.0.0.1:8000/docs.
 - GET /review/{suggestion_id}/why — explain a decision.
 - POST /review/{suggestion_id}/approve and /reject — persist review status.
 
+## Production deployment (Render)
+
+A Render Blueprint is provided in `render.yaml`. It configures a production service, a persistent disk for SQLite and uploads, the current Gemini vision model, and a generated `FLYRANK_API_TOKEN`.
+
+1. Connect this GitHub repository to Render and create a Blueprint from `render.yaml`.
+2. In Render's environment settings, set `GEMINI_API_KEY` using Google AI Studio. Do not commit it or share it in chat.
+3. Keep `APP_ENV=production` and the generated `FLYRANK_API_TOKEN`. Treat the token like a password.
+4. Only `/` and `/health` are public. All other API routes require `Authorization: Bearer <FLYRANK_API_TOKEN>`.
+5. The service uses a persistent disk for the SQLite database and uploaded images. The Render disk and service plan may incur charges; review Render's current pricing before creating the service.
+
+Do not deploy with a missing API token. Production requests fail closed when `FLYRANK_API_TOKEN` is not configured. The single shared bearer token is suitable only for a controlled demo; a multi-user production product needs per-user authentication, rate limiting, usage quotas, monitoring, and a managed database.
+
+## Security checks
+
+GitHub Actions runs Bandit static analysis and `pip-audit` on dependencies for pushes, pull requests, and weekly scheduled checks. Review any reported vulnerability before deployment.
+
 ## Docker
     docker compose up --build
 Open http://127.0.0.1:8000/docs. Configure .env first; ./data is mounted for persistent database and uploads.
