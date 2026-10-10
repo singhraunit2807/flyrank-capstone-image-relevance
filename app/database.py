@@ -7,7 +7,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-DB_PATH = Path(os.getenv("DATABASE_PATH", "data/flyrank.db"))
+# Vercel's deployed source filesystem is read-only. /tmp is writable but ephemeral.
+_default_db_path = "/tmp/flyrank.db" if os.getenv("VERCEL") else "data/flyrank.db"
+DB_PATH = Path(os.getenv("DATABASE_PATH", _default_db_path))
 
 
 def _connect() -> sqlite3.Connection:
