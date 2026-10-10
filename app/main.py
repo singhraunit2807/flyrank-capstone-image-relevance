@@ -15,6 +15,7 @@ load_dotenv()
 from . import database
 from .core import Image, Suggestion, rank_images
 from .vision import VisionProviderError, analyze_image as vision_analyze
+from .semantic import EmbeddingProviderError, rank_with_semantic_embeddings
 IMAGES: list[Image] = []
 SUGGESTIONS: dict[str, Suggestion] = {}
 
@@ -91,7 +92,13 @@ def _as_result(post_id: str, item: Suggestion) -> dict[str, Any]:
 
 
 def _rank(post_id: str, text: str, threshold: float) -> list[dict[str, Any]]:
-    ranked = rank_images(text, IMAGES, threshold)
+    if os.getenv("GEMINI_API_KEY", "").strip():
+        try:
+            ranked = rank_with_semantic_embeddings(text, IMAGES, threshold)
+        except EmbeddingProviderError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+    else:
+        ranked = rank_images(text, IMAGES, threshold)
     rows = []
     for item in ranked:
         suggestion_id = _suggestion_id(post_id, item.image_id)
@@ -111,7 +118,7 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"status": "ok", "catalogue_count": len(IMAGES), "database": "sqlite", "vision_provider": "gemini" if os.getenv("GEMINI_API_KEY") else "not_configured"}
+    return {"status": "ok", "catalogue_count": len(IMAGES), "database": "sqlite", "vision_provider": "gemini" if os.getenv("GEMINI_API_KEY") else "not_configured", "ranking_mode": "gemini_semantic_embeddings" if os.getenv("GEMINI_API_KEY") else "offline_lexical_baseline"}
 
 
 @app.get("/images")
