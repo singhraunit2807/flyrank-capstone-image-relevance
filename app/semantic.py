@@ -28,7 +28,7 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
         ]
     }
     try:
-        response = httpx.post(url, params={"key": key}, json=payload, timeout=35)
+        response = httpx.post(url, headers={"x-goog-api-key": key}, json=payload, timeout=35)
         response.raise_for_status()
         data = response.json()
         embeddings = [item["values"] for item in data["embeddings"]]
