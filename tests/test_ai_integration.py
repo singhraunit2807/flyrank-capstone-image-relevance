@@ -50,7 +50,9 @@ def test_gemini_vision_provider_parses_structured_response(monkeypatch):
 
 
 def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
-    monkeypatch.setenv("UPLOAD_DIR", str(tmp_path))
+    monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setattr(database, "DB_PATH", tmp_path / "restart-test.db")
+    database.init_db()
     monkeypatch.setattr(main_module, "vision_analyze", lambda content, mime: {
         "subject": "red fox", "category": "animal",
         "attributes": ["orange fur"], "caption": "A red fox in woodland",
@@ -68,6 +70,11 @@ def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
     assert payload["metadata"]["subject"] == "red fox"
     assert (tmp_path / f"{payload['id']}.png").read_bytes() == b"fake-png-content"
     assert any(item["id"] == payload["id"] for item in client.get("/images").json()["images"])
+
+    # Simulate a fresh process rebuilding its in-memory catalogue from SQLite.
+    IMAGES.clear()
+    IMAGES.extend(main_module._image_from_record(row) for row in database.load_images())
+    assert any(image.id == payload["id"] and image.subject == "red fox" for image in IMAGES)
 
 
 def test_gemini_embedding_provider_parses_vectors(monkeypatch):
