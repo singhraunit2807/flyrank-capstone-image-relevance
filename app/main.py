@@ -3,6 +3,8 @@ from __future__ import annotations
 import hmac
 import os
 import uuid
+from urllib.parse import quote
+import httpx
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -211,24 +213,54 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
     except VisionProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    default_upload_dir = "/tmp/flyrank-uploads" if os.getenv("VERCEL") else "data/uploads"
-    upload_dir = Path(os.getenv("UPLOAD_DIR", default_upload_dir))
-    upload_dir.mkdir(parents=True, exist_ok=True)
     suffix = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}[file.content_type]
     image_id = f"img-{uuid.uuid4().hex[:12]}"
-    image_path = upload_dir / f"{image_id}{suffix}"
-    image_path.write_bytes(content)
+    filename = Path(file.filename or "upload").name
+    supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    bucket = os.getenv("SUPABASE_STORAGE_BUCKET", "flyrank-images").strip()
+    if supabase_url and supabase_key:
+        object_path = f"{image_id}{suffix}"
+        storage_url = f"{supabase_url}/storage/v1/object/{quote(bucket, safe='')}/{quote(object_path, safe='/')}"
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                stored = await client.post(
+                    f"{supabase_url}/storage/v1/bucket",
+                    headers={"Authorization": f"Bearer {supabase_key}", "apikey": supabase_key,
+                             "Content-Type": "application/json"},
+                    json={"id": bucket, "name": bucket, "public": False},
+                )
+                if stored.status_code not in (200, 201, 409):
+                    stored.raise_for_status()
+                upload_response = await client.post(
+                    storage_url,
+                    headers={"Authorization": f"Bearer {supabase_key}", "apikey": supabase_key,
+                             "Content-Type": file.content_type, "x-upsert": "true"},
+                    content=content,
+                )
+                upload_response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail="Could not save image to persistent Supabase Storage. Check Supabase settings.") from exc
+        image_path = f"supabase://{bucket}/{object_path}"
+        storage_kind = "supabase_storage"
+    else:
+        default_upload_dir = "/tmp/flyrank-uploads" if os.getenv("VERCEL") else "data/uploads"
+        upload_dir = Path(os.getenv("UPLOAD_DIR", default_upload_dir))
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        local_path = upload_dir / f"{image_id}{suffix}"
+        local_path.write_bytes(content)
+        image_path = str(local_path)
+        storage_kind = "temporary_local" if os.getenv("VERCEL") else "local"
     image = Image(
         id=image_id, subject=metadata["subject"], category=metadata["category"],
         attributes=tuple(metadata["attributes"]), caption=metadata["caption"],
         confidence=metadata["confidence"],
     )
     IMAGES.append(image)
-    _persist_image(image, filename=Path(file.filename or "upload").name,
-                   content_type=file.content_type, image_path=str(image_path))
+    _persist_image(image, filename=filename, content_type=file.content_type, image_path=image_path)
     return {
-        "id": image.id, "filename": Path(file.filename or "upload").name,
-        "metadata": image.__dict__, "image_path": str(image_path),
+        "id": image.id, "filename": filename,
+        "metadata": image.__dict__, "image_path": image_path, "storage": storage_kind,
         "vision_provider": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
     }
 
