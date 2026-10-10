@@ -29,6 +29,19 @@ def _image_from_record(row: dict[str, Any]) -> Image:
     )
 
 
+def _has_image_signature(content: bytes, mime_type: str) -> bool:
+    """Reject obvious MIME-type spoofing before sending bytes to the vision provider."""
+    if mime_type == "image/jpeg":
+        return content.startswith(b"\xff\xd8\xff")
+    if mime_type == "image/png":
+        return content.startswith(b"\x89PNG\r\n\x1a\n")
+    if mime_type == "image/gif":
+        return content.startswith((b"GIF87a", b"GIF89a"))
+    if mime_type == "image/webp":
+        return len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP"
+    return False
+
+
 def _persist_image(image: Image, **extra: Any) -> None:
     database.save_image({
         "id": image.id, "subject": image.subject, "category": image.category,
@@ -163,6 +176,8 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
         raise HTTPException(status_code=400, detail="Uploaded image is empty.")
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Maximum image size is 10 MB.")
+    if not _has_image_signature(content, file.content_type):
+        raise HTTPException(status_code=415, detail="The uploaded file content does not match its image type.")
     try:
         metadata = vision_analyze(content, file.content_type)
     except VisionProviderError as exc:
