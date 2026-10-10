@@ -2,12 +2,16 @@ run: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 seed: POST /demo/seed
 test: python -m pytest -q
 base_url: http://127.0.0.1:8000
+storage: SQLite (DATABASE_PATH, default data/flyrank.db)
+upload_dir: UPLOAD_DIR (default data/uploads)
+vision_provider: Gemini Vision (requires GEMINI_API_KEY)
 endpoints:
   - GET /
   - GET /health
   - GET /images
   - POST /demo/seed
   - POST /images/analyze
+  - POST /images/upload
   - POST /posts/{post_id}/match
   - GET /posts/{post_id}/images?text=...
   - POST /review/{suggestion_id}/approve
