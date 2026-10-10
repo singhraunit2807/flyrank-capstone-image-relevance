@@ -24,7 +24,7 @@ Open http://127.0.0.1:8000/docs.
 
 ## Environment
 - GEMINI_API_KEY: required for image vision and semantic embedding ranking; keep it secret.
-- GEMINI_MODEL: defaults to gemini-2.5-flash.
+- GEMINI_MODEL: defaults to gemini-3.8-flash.
 - GEMINI_EMBEDDING_MODEL: defaults to gemini-embedding-001.
 - DATABASE_PATH: defaults to data/flyrank.db.
 - UPLOAD_DIR: defaults to data/uploads.
