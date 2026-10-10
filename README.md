@@ -1,90 +1,76 @@
 # FlyRank AI Image Understanding & Content Matching Engine
 
-A backend capstone that understands an image library, creates structured image metadata, matches images to article/post content using semantic similarity, and rejects unsafe or low-confidence matches with an explanation.
+A runnable FastAPI capstone demo that stores structured image metadata, ranks candidate images against article/post text, rejects clear subject mismatches and low-confidence records, and exposes explanations plus human-review endpoints.
 
-## Project goal
+> Scope note: this repository implements an offline lexical similarity baseline and a metadata API. It does not run a trained vision model on raw image files. The /images/analyze endpoint accepts structured metadata produced by a vision model or entered by a human.
 
-Given a post such as **"The behavior of red foxes"**, the service should rank a red-fox image highly and reject a wolf image when the mismatch guard detects that the candidate is not actually a fox.
+## What works
 
-The capstone brief requires a dedicated public repository, reproducible run/seed steps, evidence for requirements, an AI-usage log, and no committed secrets.
+- FastAPI application with interactive Swagger UI.
+- Seeded demo catalogue (fox, wolf, dog, bear, deer, cat, bird).
+- Metadata validation and confidence range checks.
+- Stable, offline feature-hashing similarity score.
+- Explicit subject mismatch guard (for example, reject a wolf for a fox post).
+- Ranked match results with an explanation for each decision.
+- Approve/reject review endpoints and review status.
+- Automated API regression tests.
 
-## Architecture
+## Run locally (Windows PowerShell)
 
-```text
-Images
-  |
-  v
-Vision provider -> structured tags/caption/confidence -> validation
-  |                                      |
-  +-> image embedding -------------------+
-                                         v
-Post text -> post embedding -> similarity ranking
-                                         |
-                                         v
-                              Mismatch Guard
-                           /                  \
-                    confident match       reject + reason
-                           |                  |
-                           +--------> Review API
-```
+    py -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install -r requirements.txt
+    python -m uvicorn app.main:app --reload
 
-## Current implementation
+Open http://127.0.0.1:8000/docs. The server automatically seeds demo records at startup. To reset the catalogue, call POST /demo/seed from Swagger UI.
 
-This repository starts with a runnable FastAPI backend and a provider abstraction so the project can be developed without committing an API key. The default development mode uses deterministic local embeddings and seeded metadata; a vision/embedding provider can be plugged in later.
+## Run with Docker
 
-### Planned core endpoints
+    docker compose up --build
 
-- `GET /health`
-- `GET /posts/{post_id}/images` — ranked image suggestions with guard decisions
-- `POST /review/{suggestion_id}/approve`
-- `POST /review/{suggestion_id}/reject`
-- `GET /review/{suggestion_id}/why`
-- `POST /images/analyze` — validate structured vision output
+Open http://127.0.0.1:8000/docs.
 
-## Run locally
+## Try the API
 
-### Option A — Python
+### 1. Check health
 
-```bash
-python -m venv .venv
-# Windows
-.venv\\Scripts\\activate
-# macOS/Linux
-# source .venv/bin/activate
+    curl http://127.0.0.1:8000/health
 
-pip install -r requirements.txt
-python -m app.seed
-uvicorn app.main:app --reload
-```
+### 2. Match a post to images
 
-Then open `http://127.0.0.1:8000/docs`.
+    curl -X POST http://127.0.0.1:8000/posts/fox-post/match -H "Content-Type: application/json" -d '{"post_id":"fox-post","text":"The behavior of red foxes","threshold":0.10}'
 
-### Option B — Docker
+The response includes a top suggestion (if any), ranked candidates, a score, a decision, and a reason. Wolf candidates are rejected by the explicit subject guard.
 
-```bash
-docker compose up --build
-```
+### 3. Add metadata for an image
 
-## Test
+    curl -X POST http://127.0.0.1:8000/images/analyze -H "Content-Type: application/json" -d '{"subject":"red fox","category":"animal","attributes":["orange fur","forest"],"caption":"A red fox in a forest","confidence":0.96}'
 
-```bash
-pytest -q
-```
+This endpoint receives metadata, not an image upload.
 
-## Environment
+### 4. Explain and review a suggestion
 
-Copy `.env.example` to `.env`. Never commit `.env` or real API keys.
+Use the suggestion_id returned from a match with:
+- GET /review/{suggestion_id}/why
+- POST /review/{suggestion_id}/approve
+- POST /review/{suggestion_id}/reject
 
-## Evaluation
+## Tests
 
-The project will maintain a small labeled evaluation set and report top-1 precision in this README once the evaluation pipeline is complete. The threshold must be selected from evaluation data rather than guessed.
+    python -m pytest -q
 
-## Limitations
+Tests cover health, catalogue seeding, request validation, fox-vs-wolf rejection, match ranking, review status, and post ID validation.
 
-- The initial scaffold does not claim production-grade vision accuracy.
-- Local deterministic embeddings are a development fallback, not a substitute for a trained semantic embedding model.
-- The vision provider is intentionally abstracted so Gemini or a local Ollama vision model can be added without changing the API contract.
-- The repository currently contains the backend foundation; evidence will be updated as each capstone requirement is actually implemented and tested.
+## Limitations and next steps
+
+- Feature hashing is a transparent, deterministic lexical baseline, not a trained semantic embedding model.
+- Vision tags/captions are supplied as structured metadata; raw image ingestion and model inference are not implemented.
+- State is in memory and resets when the API process restarts; use a database before production deployment.
+- The project is a working educational demo, not a production-ready moderation or recommendation service.
+
+## Security
+
+Do not commit API keys or a real .env file. The current demo does not require any external API key.
 
 ## License
 
