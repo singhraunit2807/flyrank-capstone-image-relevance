@@ -1,77 +1,75 @@
 # FlyRank AI Image Understanding & Content Matching Engine
 
-A runnable FastAPI capstone demo that stores structured image metadata, ranks candidate images against article/post text, rejects clear subject mismatches and low-confidence records, and exposes explanations plus human-review endpoints.
+A runnable FastAPI capstone demo that stores image metadata, optionally analyzes uploaded images with Gemini Vision, ranks image candidates against article/post text, rejects clear subject mismatches, and supports human review with persistent SQLite storage.
 
-> Scope note: this repository implements an offline lexical similarity baseline and a metadata API. It does not run a trained vision model on raw image files. The /images/analyze endpoint accepts structured metadata produced by a vision model or entered by a human.
+## Features
+- FastAPI backend with interactive Swagger UI.
+- Demo catalogue covering fox, wolf, dog, bear, deer, cat, and bird.
+- JPEG, PNG, WEBP, and GIF upload (maximum 10 MB).
+- Optional Gemini Vision metadata extraction: subject, category, attributes, caption, and confidence.
+- Stable offline lexical similarity baseline and explicit subject mismatch guard.
+- Ranked suggestions, explanations, and human review.
+- SQLite persistence for metadata and review results across restarts.
+- Automated API regression tests and GitHub Actions workflow.
 
-## What works
-
-- FastAPI application with interactive Swagger UI.
-- Seeded demo catalogue (fox, wolf, dog, bear, deer, cat, bird).
-- Metadata validation and confidence range checks.
-- Stable, offline feature-hashing similarity score.
-- Explicit subject mismatch guard (for example, reject a wolf for a fox post).
-- Ranked match results with an explanation for each decision.
-- Approve/reject review endpoints and review status.
-- Automated API regression tests.
+## Important AI scope note
+Uploaded images are sent to the configured Gemini Vision API for analysis. You need your own Gemini API key for that feature. Without a key, the upload endpoint returns a configuration error rather than pretending analysis succeeded. Matching currently uses deterministic lexical feature hashing, not a trained multimodal embedding model. This is an educational working demo, not a production-grade image search system.
 
 ## Run locally (Windows PowerShell)
-
     py -m venv .venv
     .\.venv\Scripts\Activate.ps1
     python -m pip install -r requirements.txt
+    Copy-Item .env.example .env
+    # Add your GEMINI_API_KEY to .env to enable image vision analysis
     python -m uvicorn app.main:app --reload
-
-Open http://127.0.0.1:8000/docs. The server automatically seeds demo records at startup. To reset the catalogue, call POST /demo/seed from Swagger UI.
-
-## Run with Docker
-
-    docker compose up --build
 
 Open http://127.0.0.1:8000/docs.
 
+Linux/macOS:
+    python -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -r requirements.txt
+    cp .env.example .env
+    python -m uvicorn app.main:app --reload
+
+## Environment
+- GEMINI_API_KEY: required only for image upload and AI vision analysis.
+- GEMINI_MODEL: optional; defaults to gemini-2.5-flash.
+- DATABASE_PATH: optional; defaults to data/flyrank.db.
+- UPLOAD_DIR: optional; defaults to data/uploads.
+
+Never commit a real API key or populated .env file.
+
 ## Try the API
+- GET /health reports database mode, catalogue count, and vision configuration.
+- GET /images lists persisted image metadata.
+- POST /demo/seed resets the catalogue to demo records.
+- POST /images/upload accepts an image and uses Gemini Vision to extract metadata; a key is required.
+- POST /images/analyze accepts manually supplied structured metadata without a vision key.
+- POST /posts/{post_id}/match ranks images for post content.
+- GET /review/{suggestion_id}/why explains a decision.
+- POST /review/{suggestion_id}/approve and /reject store review decisions.
 
-### 1. Check health
-
-    curl http://127.0.0.1:8000/health
-
-### 2. Match a post to images
-
-    curl -X POST http://127.0.0.1:8000/posts/fox-post/match -H "Content-Type: application/json" -d '{"post_id":"fox-post","text":"The behavior of red foxes","threshold":0.10}'
-
-The response includes a top suggestion (if any), ranked candidates, a score, a decision, and a reason. Wolf candidates are rejected by the explicit subject guard.
-
-### 3. Add metadata for an image
-
+Manual metadata example:
     curl -X POST http://127.0.0.1:8000/images/analyze -H "Content-Type: application/json" -d '{"subject":"red fox","category":"animal","attributes":["orange fur","forest"],"caption":"A red fox in a forest","confidence":0.96}'
 
-This endpoint receives metadata, not an image upload.
+Matching example:
+    curl -X POST http://127.0.0.1:8000/posts/fox-post/match -H "Content-Type: application/json" -d '{"post_id":"fox-post","text":"The behavior of red foxes","threshold":0.10}'
 
-### 4. Explain and review a suggestion
-
-Use the suggestion_id returned from a match with:
-- GET /review/{suggestion_id}/why
-- POST /review/{suggestion_id}/approve
-- POST /review/{suggestion_id}/reject
+## Docker
+    docker compose up --build
+Open http://127.0.0.1:8000/docs. Docker Compose mounts ./data so the SQLite database and uploaded images survive container recreation.
 
 ## Tests
-
     python -m pytest -q
+Tests cover health, demo seeding, metadata validation and persistence, mismatch rejection, ranking, review persistence, invalid post IDs, and upload content-type validation.
 
-Tests cover health, catalogue seeding, request validation, fox-vs-wolf rejection, match ranking, review status, and post ID validation.
-
-## Limitations and next steps
-
-- Feature hashing is a transparent, deterministic lexical baseline, not a trained semantic embedding model.
-- Vision tags/captions are supplied as structured metadata; raw image ingestion and model inference are not implemented.
-- State is in memory and resets when the API process restarts; use a database before production deployment.
-- The project is a working educational demo, not a production-ready moderation or recommendation service.
-
-## Security
-
-Do not commit API keys or a real .env file. The current demo does not require any external API key.
+## Current limitations
+- Gemini vision analysis requires a user-supplied API key and internet access.
+- Similarity is lexical feature hashing, not a trained semantic or multimodal embedding model.
+- SQLite suits a local demo; concurrent production deployments should use a managed database.
+- Confidence is model-reported and is not calibrated certainty.
+- No benchmark accuracy or production readiness is claimed.
 
 ## License
-
 MIT
