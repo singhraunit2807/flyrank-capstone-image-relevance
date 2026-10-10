@@ -224,14 +224,6 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
         storage_url = f"{supabase_url}/storage/v1/object/{quote(bucket, safe='')}/{quote(object_path, safe='/')}"
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                stored = await client.post(
-                    f"{supabase_url}/storage/v1/bucket",
-                    headers={"Authorization": f"Bearer {supabase_key}", "apikey": supabase_key,
-                             "Content-Type": "application/json"},
-                    json={"id": bucket, "name": bucket, "public": False},
-                )
-                if stored.status_code not in (200, 201, 409):
-                    stored.raise_for_status()
                 upload_response = await client.post(
                     storage_url,
                     headers={"Authorization": f"Bearer {supabase_key}", "apikey": supabase_key,
