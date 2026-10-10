@@ -43,6 +43,15 @@ Open http://127.0.0.1:8000/docs.
     docker compose up --build
 Open http://127.0.0.1:8000/docs. Configure .env first; ./data is mounted for persistent database and uploads.
 
+## Live Gemini verification
+
+1. Create a Gemini API key in Google AI Studio and put it in your local `.env` as `GEMINI_API_KEY=...`. Never commit `.env` or paste the key into chat.
+2. Start the API in the same environment where `.env` is available: `python -m uvicorn app.main:app --reload`.
+3. In a second terminal, activate the same virtual environment and run against a real local image: `python scripts/verify_gemini_live.py --image "path/to/your-image.jpg"`.
+4. A successful run prints `PASS: real Gemini vision upload and semantic ranking endpoint completed.` The match itself may still be rejected by confidence or subject guards; inspect the printed metadata and suggestion.
+
+This live check requires internet access, a valid API key with access/quota, and a real supported image. Automated CI uses mocked provider responses and does not verify live credentials.
+
 ## Tests
     python -m pytest -q
 The GitHub Actions test workflow has passed for the semantic-ranking and mismatch-guard changes. Check the latest workflow run for subsequent commits.
