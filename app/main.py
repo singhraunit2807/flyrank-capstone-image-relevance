@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -7,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -69,6 +71,30 @@ app = FastAPI(
     description="Image metadata ingestion, optional Gemini vision analysis, relevance ranking, mismatch guards, SQLite persistence, and review APIs.",
     version="2.0.0",
 )
+
+_PUBLIC_PRODUCTION_PATHS = {"/", "/health"}
+
+
+@app.middleware("http")
+async def production_api_auth(request, call_next):
+    """Require a bearer token for all non-health API routes in production."""
+    if os.getenv("APP_ENV", "development").strip().lower() == "production":
+        configured_token = os.getenv("FLYRANK_API_TOKEN", "").strip()
+        if not configured_token:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Production configuration error: FLYRANK_API_TOKEN is required."},
+            )
+        if request.url.path not in _PUBLIC_PRODUCTION_PATHS:
+            header = request.headers.get("authorization", "")
+            supplied_token = header[7:].strip() if header.lower().startswith("bearer ") else ""
+            if not supplied_token or not hmac.compare_digest(supplied_token, configured_token):
+                return JSONResponse(
+                    status_code=401,
+                    headers={"WWW-Authenticate": "Bearer"},
+                    content={"detail": "A valid bearer token is required."},
+                )
+    return await call_next(request)
 
 
 class AnalyzeRequest(BaseModel):
