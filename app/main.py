@@ -18,6 +18,8 @@ load_dotenv()
 IMAGES: list[Image] = []
 SUGGESTIONS: dict[str, Suggestion] = {}
 
+database.init_db()
+
 
 def _image_from_record(row: dict[str, Any]) -> Image:
     return Image(
