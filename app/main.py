@@ -10,11 +10,11 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from . import database
 from .core import Image, Suggestion, rank_images
 from .vision import VisionProviderError, analyze_image as vision_analyze
-
-load_dotenv()
 IMAGES: list[Image] = []
 SUGGESTIONS: dict[str, Suggestion] = {}
 
