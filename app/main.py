@@ -200,7 +200,7 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
     return {
         "id": image.id, "filename": Path(file.filename or "upload").name,
         "metadata": image.__dict__, "image_path": str(image_path),
-        "vision_provider": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        "vision_provider": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
     }
 
 
