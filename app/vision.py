@@ -23,7 +23,7 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
             "GEMINI_API_KEY is not configured. Add it to your local .env to enable image AI analysis."
         )
 
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     prompt = (
         "Analyze this image for a content-relevance catalogue. Return ONLY JSON with keys: "
