@@ -1,6 +1,6 @@
 # FlyRank AI Image Understanding & Content Matching Engine
 
-FastAPI capstone demo for image upload, Gemini Vision metadata extraction, relevance ranking, mismatch guards, human review, and persistent SQLite storage.
+FastAPI capstone demo for image upload, Gemini Vision metadata extraction, relevance ranking, mismatch guards, human review, and SQLite or managed PostgreSQL storage.
 
 ## Features
 - JPEG, PNG, WEBP, and GIF uploads up to 10 MB.
@@ -26,8 +26,10 @@ Open http://127.0.0.1:8000/docs.
 - GEMINI_API_KEY: required for image vision and semantic embedding ranking; keep it secret.
 - GEMINI_MODEL: defaults to gemini-3.8-flash.
 - GEMINI_EMBEDDING_MODEL: defaults to gemini-embedding-001.
-- DATABASE_PATH: defaults to data/flyrank.db.
-- UPLOAD_DIR: defaults to data/uploads.
+- DATABASE_URL: optional PostgreSQL connection string; when set, FlyRank uses PostgreSQL instead of SQLite. For Supabase, use the connection string from Project Settings → Database and require SSL.
+- SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY: when both are set, uploaded image bytes are stored in Supabase Storage. Keep the service-role key secret and server-side only.
+- SUPABASE_STORAGE_BUCKET: defaults to `flyrank-images`; the app creates this private bucket if it does not exist.
+- DATABASE_PATH and UPLOAD_DIR: local SQLite and upload paths used when managed services are not configured. On Vercel, these fall back to ephemeral `/tmp` paths.
 
 ## Main endpoints
 - GET /health — reports catalogue count, provider configuration, and ranking mode.
