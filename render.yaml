@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: flyrank-api
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: flyrank-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FLYRANK_API_TOKEN
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /var/data/flyrank.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
