@@ -79,13 +79,13 @@ _PUBLIC_PRODUCTION_PATHS = {"/", "/health"}
 async def production_api_auth(request, call_next):
     """Require a bearer token for all non-health API routes in production."""
     if os.getenv("APP_ENV", "development").strip().lower() == "production":
-        configured_token = os.getenv("FLYRANK_API_TOKEN", "").strip()
-        if not configured_token:
-            return JSONResponse(
-                status_code=503,
-                content={"detail": "Production configuration error: FLYRANK_API_TOKEN is required."},
-            )
         if request.url.path not in _PUBLIC_PRODUCTION_PATHS:
+            configured_token = os.getenv("FLYRANK_API_TOKEN", "").strip()
+            if not configured_token:
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Production configuration error: FLYRANK_API_TOKEN is required."},
+                )
             header = request.headers.get("authorization", "")
             supplied_token = header[7:].strip() if header.lower().startswith("bearer ") else ""
             if not supplied_token or not hmac.compare_digest(supplied_token, configured_token):
