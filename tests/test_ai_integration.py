@@ -68,7 +68,7 @@ def test_upload_endpoint_runs_vision_and_persists_image(monkeypatch, tmp_path):
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["metadata"]["subject"] == "red fox"
-    assert (tmp_path / f"{payload['id']}.png").read_bytes() == b"\x89PNG\r\n\x1a\nfake-png-content"
+    assert (tmp_path / "uploads" / f"{payload['id']}.png").read_bytes() == b"\x89PNG\r\n\x1a\nfake-png-content"
     assert any(item["id"] == payload["id"] for item in client.get("/images").json()["images"])
 
     # Simulate a fresh process rebuilding its in-memory catalogue from SQLite.
