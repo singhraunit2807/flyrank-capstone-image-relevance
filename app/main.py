@@ -197,11 +197,13 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
     allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=415, detail="Upload a JPEG, PNG, WEBP, or GIF image.")
-    content = await file.read(10 * 1024 * 1024 + 1)
+    # Vercel serverless requests have a 4.5 MB body limit; keep uploads below it.
+    max_upload_bytes = 4 * 1024 * 1024
+    content = await file.read(max_upload_bytes + 1)
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded image is empty.")
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="Maximum image size is 10 MB.")
+    if len(content) > max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Maximum image size on this deployment is 4 MB.")
     if not _has_image_signature(content, file.content_type):
         raise HTTPException(status_code=415, detail="The uploaded file content does not match its image type.")
     try:
@@ -209,7 +211,8 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
     except VisionProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    upload_dir = Path(os.getenv("UPLOAD_DIR", "data/uploads"))
+    default_upload_dir = "/tmp/flyrank-uploads" if os.getenv("VERCEL") else "data/uploads"
+    upload_dir = Path(os.getenv("UPLOAD_DIR", default_upload_dir))
     upload_dir.mkdir(parents=True, exist_ok=True)
     suffix = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}[file.content_type]
     image_id = f"img-{uuid.uuid4().hex[:12]}"
