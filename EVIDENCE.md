@@ -1,33 +1,26 @@
 # Evidence
 
-This file separates implemented functionality from capabilities that still require additional engineering or verification.
-
-## Current evidence
+## Implemented in the repository
 
 | Requirement | Status | Proof |
 |---|---|---|
-| Public dedicated GitHub repository | DONE | Public repository dedicated to this capstone. |
-| Runnable FastAPI backend | IMPLEMENTED | Startup seeds a demo catalogue; interactive API docs are available at /docs. |
-| Structured image metadata schema | IMPLEMENTED | POST /images/analyze validates subject, category, attributes, caption, and confidence. |
-| Offline relevance ranking | IMPLEMENTED | app/core.py provides stable feature-hashing similarity and ranked decisions. |
-| Clear subject mismatch guard | IMPLEMENTED | tests/test_api.py checks that wolf records are rejected for a fox post. |
-| Low-confidence rejection | IMPLEMENTED | Candidates below the configured confidence floor are rejected. |
-| Explanation endpoint | IMPLEMENTED | GET /review/{suggestion_id}/why returns score, decision, and reason after matching. |
-| Human review status | IMPLEMENTED IN MEMORY | Approve/reject endpoints update review status; state is lost on process restart. |
-| Automated API tests | ADDED, RUN PENDING | Six regression tests are committed; a successful CI run has not yet been verified. |
-| GitHub Actions workflow | ADDED, RUN PENDING | .github/workflows/tests.yml runs pytest on push, pull request, or manual dispatch. |
-| Raw image upload and vision-model inference | TODO | The API currently accepts structured metadata, not image files. |
-| Trained semantic embedding provider | TODO | Current matcher is a deterministic lexical baseline, not a trained semantic model. |
-| Batch processing and retries | TODO | Not implemented. |
-| Cost tracking | TODO | Not implemented. |
-| Persistent database and audit trail | TODO | Catalogue and review state are in memory. |
-| Labeled evaluation set and measured top-1 precision | TODO | No measured benchmark is claimed. |
+| FastAPI backend and Swagger UI | IMPLEMENTED | app/main.py |
+| Structured image metadata validation | IMPLEMENTED | POST /images/analyze |
+| Persistent image metadata | IMPLEMENTED | SQLite tables in app/database.py |
+| Persistent match decisions and reviews | IMPLEMENTED | suggestions table in app/database.py |
+| Local image file upload | IMPLEMENTED | POST /images/upload; MIME and 10 MB checks |
+| Vision provider integration | IMPLEMENTED, KEY REQUIRED | app/vision.py calls Gemini Vision when GEMINI_API_KEY is configured |
+| Offline relevance ranking | IMPLEMENTED BASELINE | app/core.py stable lexical feature hashing |
+| Subject mismatch and confidence guards | IMPLEMENTED | app/core.py and tests/test_api.py |
+| Automated tests | COMMITTED, EXECUTION NOT VERIFIED HERE | Run python -m pytest -q or inspect GitHub Actions |
+| GitHub Actions workflow | ADDED | .github/workflows/tests.yml |
+| Trained multimodal embedding model | TODO | Current matcher is lexical, not a trained semantic model |
+| Batch jobs, retry queue, cost tracking | TODO | Not implemented |
+| Production database deployment | TODO | SQLite is used for the local demo |
+| Labeled evaluation benchmark | TODO | No accuracy metric is claimed |
 
 ## Local verification
-
-Run the following commands from the repository root:
-
     python -m pip install -r requirements.txt
     python -m pytest -q
 
-The test suite must pass in a local or CI environment before marking automated verification complete.
+For real image analysis, configure GEMINI_API_KEY in a local .env. Do not commit credentials. Without the key, the upload endpoint returns HTTP 503 and explains the missing configuration.
