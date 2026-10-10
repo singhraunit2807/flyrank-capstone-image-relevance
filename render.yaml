@@ -2,16 +2,12 @@ services:
   - type: web
     name: flyrank-api
     runtime: python
-    plan: starter
+    plan: free
     region: singapore
     buildCommand: python -m pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: flyrank-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -22,6 +18,6 @@ services:
       - key: FLYRANK_API_TOKEN
         generateValue: true
       - key: DATABASE_PATH
-        value: /var/data/flyrank.db
+        value: /tmp/flyrank.db
       - key: UPLOAD_DIR
-        value: /var/data/uploads
+        value: /tmp/flyrank-uploads
