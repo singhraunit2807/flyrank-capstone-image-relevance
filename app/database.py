@@ -16,7 +16,7 @@ def _connect():
     if DATABASE_URL:
         import psycopg
         from psycopg.rows import dict_row
-        return psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
+        return psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10, prepare_threshold=None)
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DB_PATH, timeout=15)
     connection.row_factory = sqlite3.Row
