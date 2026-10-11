@@ -74,7 +74,7 @@ app = FastAPI(
     version="2.0.0",
 )
 
-_PUBLIC_PRODUCTION_PATHS = {"/", "/health"}
+_PUBLIC_PRODUCTION_PATHS = {"/", "/health", "/docs", "/openapi.json", "/redoc", "/docs/oauth2-redirect"}
 
 
 @app.middleware("http")
