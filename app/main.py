@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -300,3 +301,32 @@ def reject(suggestion_id: str) -> ReviewResponse:
     if not database.set_review(suggestion_id, "rejected"):
         raise HTTPException(status_code=404, detail="suggestion not found; run a match first")
     return ReviewResponse(suggestion_id=suggestion_id, status="rejected")
+
+
+def custom_openapi():
+    """Expose the existing production bearer-token middleware in Swagger UI."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque token",
+        "description": "Enter the value configured as FLYRANK_API_TOKEN. Do not include the word Bearer.",
+    }
+    for path, path_item in schema.get("paths", {}).items():
+        if path in _PUBLIC_PRODUCTION_PATHS:
+            continue
+        for operation in path_item.values():
+            if isinstance(operation, dict) and "responses" in operation:
+                operation["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
