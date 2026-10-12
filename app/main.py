@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import uuid
@@ -96,11 +97,13 @@ async def production_api_auth(request, call_next):
                     status_code=401,
                     headers={"WWW-Authenticate": "Bearer"},
                     content={
-    "detail": "A valid bearer token is required.",
-    "authorization_header_received": bool(header),
-    "bearer_scheme_detected": header.lower().startswith("bearer "),
-    "configured_token_present": bool(configured_token),
-},
+                        "detail": "A valid bearer token is required.",
+                        "authorization_header_received": bool(header),
+                        "bearer_scheme_detected": header.lower().startswith("bearer "),
+                        "configured_token_present": bool(configured_token),
+                        "supplied_token_fingerprint": hashlib.sha256(supplied_token.encode()).hexdigest()[:12] if supplied_token else None,
+                        "configured_token_fingerprint": hashlib.sha256(configured_token.encode()).hexdigest()[:12],
+                    },
                 )
     return await call_next(request)
 
