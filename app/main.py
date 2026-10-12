@@ -95,7 +95,12 @@ async def production_api_auth(request, call_next):
                 return JSONResponse(
                     status_code=401,
                     headers={"WWW-Authenticate": "Bearer"},
-                    content={"detail": "A valid bearer token is required."},
+                    content={
+    "detail": "A valid bearer token is required.",
+    "authorization_header_received": bool(header),
+    "bearer_scheme_detected": header.lower().startswith("bearer "),
+    "configured_token_present": bool(configured_token),
+},
                 )
     return await call_next(request)
 
