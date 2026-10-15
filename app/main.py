@@ -167,7 +167,10 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"status": "ok", "catalogue_count": len(IMAGES), "database": "postgresql" if os.getenv("DATABASE_URL", "").strip() else "sqlite_ephemeral_on_vercel" if os.getenv("VERCEL") else "sqlite", "image_storage": "supabase" if os.getenv("SUPABASE_URL", "").strip() and os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() else "temporary_on_vercel" if os.getenv("VERCEL") else "local", "vision_provider": "gemini" if os.getenv("GEMINI_API_KEY") else "not_configured", "ranking_mode": "gemini_semantic_embeddings" if os.getenv("GEMINI_API_KEY") else "offline_lexical_baseline"}
+    # Count persisted records instead of process-local memory; serverless instances
+    # may start with an empty IMAGES list even when PostgreSQL has saved images.
+    catalogue_count = database.count_images()
+    return {"status": "ok", "catalogue_count": catalogue_count, "database": "postgresql" if os.getenv("DATABASE_URL", "").strip() else "sqlite_ephemeral_on_vercel" if os.getenv("VERCEL") else "sqlite", "image_storage": "supabase" if os.getenv("SUPABASE_URL", "").strip() and os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip() else "temporary_on_vercel" if os.getenv("VERCEL") else "local", "vision_provider": "gemini" if os.getenv("GEMINI_API_KEY") else "not_configured", "ranking_mode": "gemini_semantic_embeddings" if os.getenv("GEMINI_API_KEY") else "offline_lexical_baseline"}
 
 
 @app.get("/images")
