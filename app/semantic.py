@@ -36,7 +36,14 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
             raise EmbeddingProviderError("Embedding provider returned an incomplete response.")
         return embeddings
     except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
-        raise EmbeddingProviderError("Gemini embedding request failed. Check the API key, model, quota, and provider status.") from exc
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            raise EmbeddingProviderError(
+                f"Gemini embedding API returned HTTP {status}. Check API key permissions, embedding model access, quota, and billing."
+            ) from exc
+        if isinstance(exc, httpx.TimeoutException):
+            raise EmbeddingProviderError("Gemini embedding API timed out. Retry later and check provider status.") from exc
+        raise EmbeddingProviderError("Gemini embedding API returned an invalid or incomplete response. Check model output and provider status.") from exc
 
 
 def _cosine(left: list[float], right: list[float]) -> float:
