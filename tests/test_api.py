@@ -133,6 +133,7 @@ def test_production_api_requires_bearer_token(monkeypatch) -> None:
     monkeypatch.setenv("FLYRANK_TOKEN", "test-only-token")
     unauthenticated = client.get("/images")
     assert unauthenticated.status_code == 401
+    assert unauthenticated.json() == {"detail": "A valid bearer token is required."}
 
     authenticated = client.get("/images", headers={"Authorization": "Bearer test-only-token"})
     assert authenticated.status_code == 200
