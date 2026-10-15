@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-_default_db_path = "/tmp/flyrank.db" if os.getenv("VERCEL") else "data/flyrank.db"
+_default_db_path = str(Path(tempfile.gettempdir()) / "flyrank.db") if os.getenv("VERCEL") else "data/flyrank.db"
 DB_PATH = Path(os.getenv("DATABASE_PATH", _default_db_path))
 
 
@@ -125,7 +126,7 @@ def save_suggestions(items: list[dict[str, Any]]) -> None:
 def get_suggestion(suggestion_id: str) -> dict[str, Any] | None:
     placeholder = "%s" if DATABASE_URL else "?"
     with connection() as conn:
-        row = conn.execute(f"SELECT * FROM suggestions WHERE suggestion_id = {placeholder}", (suggestion_id,)).fetchone()
+        row = conn.execute(f"SELECT * FROM suggestions WHERE suggestion_id = {placeholder}", (suggestion_id,)).fetchone()  # nosec B608: placeholder is a fixed driver-specific parameter marker
     return dict(row) if row else None
 
 
@@ -133,7 +134,7 @@ def set_review(suggestion_id: str, status: str) -> bool:
     placeholder = "%s" if DATABASE_URL else "?"
     with connection() as conn:
         cursor = conn.execute(
-            f"UPDATE suggestions SET review_status = {placeholder} WHERE suggestion_id = {placeholder}",
+            f"UPDATE suggestions SET review_status = {placeholder} WHERE suggestion_id = {placeholder}",  # nosec B608: placeholders are fixed driver-specific parameter markers
             (status, suggestion_id),
         )
         return cursor.rowcount > 0
