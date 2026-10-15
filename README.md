@@ -48,10 +48,10 @@ Vercel's filesystem is temporary, so do not rely on SQLite or local image files 
    - `GEMINI_MODEL` = `gemini-3.8-flash`
    - `GEMINI_EMBEDDING_MODEL` = `gemini-embedding-001`
    - `APP_ENV` = `production`
-   - `FLYRANK_API_TOKEN` = a long random secret
+   - `FLYRANK_TOKEN` = a long random secret
 6. Redeploy from Vercel. The application creates the required PostgreSQL tables on startup.
 7. Open `/health`. For persistent services, expect `database: postgresql` and `image_storage: supabase`; expect `vision_provider: gemini` after adding the Gemini key.
-8. Test a small image upload and a ranking request with `Authorization: Bearer <FLYRANK_API_TOKEN>`.
+8. Test a small image upload and a ranking request with `Authorization: Bearer <FLYRANK_TOKEN>`.
 
 The health endpoint is public and does not expose credentials. If `database` reports `sqlite_ephemeral_on_vercel` or `image_storage` reports `temporary_on_vercel`, the matching Supabase environment variables are missing or not applied to the active deployment. Redeploy after changing environment variables.
 
@@ -67,15 +67,15 @@ The health endpoint is public and does not expose credentials. If `database` rep
 
 ## Production deployment (Render)
 
-A Render Blueprint is provided in `render.yaml`. It configures a production service, a persistent disk for SQLite and uploads, the current Gemini vision model, and a generated `FLYRANK_API_TOKEN`.
+A Render Blueprint is provided in `render.yaml`. It configures a production service, a persistent disk for SQLite and uploads, the current Gemini vision model, and a generated `FLYRANK_TOKEN`.
 
 1. Connect this GitHub repository to Render and create a Blueprint from `render.yaml`.
 2. In Render's environment settings, set `GEMINI_API_KEY` using Google AI Studio. Do not commit it or share it in chat.
-3. Keep `APP_ENV=production` and the generated `FLYRANK_API_TOKEN`. Treat the token like a password.
-4. Only `/` and `/health` are public. All other API routes require `Authorization: Bearer <FLYRANK_API_TOKEN>`.
+3. Keep `APP_ENV=production` and the generated `FLYRANK_TOKEN`. Treat the token like a password.
+4. Only `/` and `/health` are public. All other API routes require `Authorization: Bearer <FLYRANK_TOKEN>`.
 5. The service uses a persistent disk for the SQLite database and uploaded images. The Render disk and service plan may incur charges; review Render's current pricing before creating the service.
 
-Do not deploy with a missing API token. Production requests fail closed when `FLYRANK_API_TOKEN` is not configured. The single shared bearer token is suitable only for a controlled demo; a multi-user production product needs per-user authentication, rate limiting, usage quotas, monitoring, and a managed database.
+Do not deploy with a missing API token. Production requests fail closed when `FLYRANK_TOKEN` is not configured. The single shared bearer token is suitable only for a controlled demo; a multi-user production product needs per-user authentication, rate limiting, usage quotas, monitoring, and a managed database.
 
 ## Security checks
 
