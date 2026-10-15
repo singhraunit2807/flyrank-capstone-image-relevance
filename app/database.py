@@ -96,6 +96,13 @@ def load_images() -> list[dict[str, Any]]:
     return result
 
 
+def count_images() -> int:
+    """Return the persisted image count from the configured database."""
+    with connection() as conn:
+        row = conn.execute("SELECT COUNT(*) AS image_count FROM images").fetchone()
+    return int(row["image_count"])
+
+
 def save_suggestions(items: list[dict[str, Any]]) -> None:
     with connection() as conn:
         for item in items:
