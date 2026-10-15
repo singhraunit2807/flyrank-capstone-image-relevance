@@ -84,11 +84,11 @@ async def production_api_auth(request, call_next):
     """Require a bearer token for all non-health API routes in production."""
     if os.getenv("APP_ENV", "development").strip().lower() == "production":
         if request.url.path not in _PUBLIC_PRODUCTION_PATHS:
-            configured_token = os.getenv("FLYRANK_API_TOKEN", "").strip()
+            configured_token = os.getenv("FLYRANK_TOKEN", "").strip()
             if not configured_token:
                 return JSONResponse(
                     status_code=503,
-                    content={"detail": "Production configuration error: FLYRANK_API_TOKEN is required."},
+                    content={"detail": "Production configuration error: FLYRANK_TOKEN is required."},
                 )
             header = request.headers.get("authorization", "")
             supplied_token = header[7:].strip() if header.lower().startswith("bearer ") else ""
@@ -325,7 +325,7 @@ def custom_openapi():
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "opaque token",
-        "description": "Enter the value configured as FLYRANK_API_TOKEN. Do not include the word Bearer.",
+        "description": "Enter the value configured as FLYRANK_TOKEN. Do not include the word Bearer.",
     }
     for path, path_item in schema.get("paths", {}).items():
         if path in _PUBLIC_PRODUCTION_PATHS:
