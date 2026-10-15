@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import tempfile
 import uuid
 from urllib.parse import quote
 import httpx
@@ -250,7 +251,7 @@ async def upload_and_analyze_image(file: UploadFile = File(...)) -> dict[str, An
         image_path = f"supabase://{bucket}/{object_path}"
         storage_kind = "supabase_storage"
     else:
-        default_upload_dir = "/tmp/flyrank-uploads" if os.getenv("VERCEL") else "data/uploads"
+        default_upload_dir = str(Path(tempfile.gettempdir()) / "flyrank-uploads") if os.getenv("VERCEL") else "data/uploads"
         upload_dir = Path(os.getenv("UPLOAD_DIR", default_upload_dir))
         upload_dir.mkdir(parents=True, exist_ok=True)
         local_path = upload_dir / f"{image_id}{suffix}"
