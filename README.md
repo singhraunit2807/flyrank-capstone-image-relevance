@@ -58,6 +58,7 @@ The health endpoint is public and does not expose credentials. If `database` rep
 ## Main endpoints
 - GET /health — reports catalogue count, provider configuration, and ranking mode.
 - GET /images — lists stored metadata.
+- GET /images/{image_id}/content — returns the original image bytes from private persistent storage.
 - POST /demo/seed — resets the demo catalogue.
 - POST /images/upload — upload an image for Gemini Vision analysis; API key required.
 - POST /images/analyze — manually provide structured metadata.
@@ -67,13 +68,13 @@ The health endpoint is public and does not expose credentials. If `database` rep
 
 ## Production deployment (Render)
 
-A Render Blueprint is provided in `render.yaml`. It configures a production service, a persistent disk for SQLite and uploads, the current Gemini vision model, and a generated `FLYRANK_TOKEN`.
+A Render Blueprint is provided in `render.yaml`. It configures a production service, the current Gemini vision model, and a generated `FLYRANK_TOKEN`. The current free-tier blueprint writes SQLite and uploads under `/tmp`, which is ephemeral; do not use it for durable production data unless you configure managed PostgreSQL and persistent image storage (or attach a supported persistent disk on a suitable plan).
 
 1. Connect this GitHub repository to Render and create a Blueprint from `render.yaml`.
 2. In Render's environment settings, set `GEMINI_API_KEY` using Google AI Studio. Do not commit it or share it in chat.
 3. Keep `APP_ENV=production` and the generated `FLYRANK_TOKEN`. Treat the token like a password.
 4. Only `/` and `/health` are public. All other API routes require `Authorization: Bearer <FLYRANK_TOKEN>`.
-5. The service uses a persistent disk for the SQLite database and uploaded images. The Render disk and service plan may incur charges; review Render's current pricing before creating the service.
+5. The current blueprint uses `/tmp` for SQLite and uploads, so data can be lost on restart/redeploy. For durable data, configure managed PostgreSQL and Supabase Storage, or add a supported persistent disk and point `DATABASE_PATH` and `UPLOAD_DIR` to its mount path. Review Render's current pricing before selecting a paid plan.
 
 Do not deploy with a missing API token. Production requests fail closed when `FLYRANK_TOKEN` is not configured. The single shared bearer token is suitable only for a controlled demo; a multi-user production product needs per-user authentication, rate limiting, usage quotas, monitoring, and a managed database.
 
