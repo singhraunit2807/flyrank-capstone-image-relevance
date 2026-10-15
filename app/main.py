@@ -142,6 +142,11 @@ def _as_result(post_id: str, item: Suggestion) -> dict[str, Any]:
 
 
 def _rank(post_id: str, text: str, threshold: float) -> list[dict[str, Any]]:
+    # Serverless instances may not retain the in-memory catalogue between requests.
+    # Refresh from persistent storage so matching sees previously uploaded images.
+    if not IMAGES:
+        records = database.load_images()
+        IMAGES.extend(_image_from_record(row) for row in records)
     if os.getenv("GEMINI_API_KEY", "").strip():
         try:
             ranked = rank_with_semantic_embeddings(text, IMAGES, threshold)
