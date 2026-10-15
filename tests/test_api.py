@@ -122,6 +122,47 @@ def test_upload_rejects_non_image() -> None:
     assert response.status_code == 415
 
 
+def test_image_content_retrieves_private_supabase_object(monkeypatch) -> None:
+    database.save_image({
+        "id": "img-storage-test",
+        "subject": "test image",
+        "category": "test",
+        "attributes": [],
+        "caption": "A test image",
+        "confidence": 0.9,
+        "filename": "test.png",
+        "content_type": "image/png",
+        "image_path": "supabase://flyrank-images/img-storage-test.png",
+    })
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_STORAGE_BUCKET", "flyrank-images")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "unit-test-key")
+
+    class FakeStorageResponse:
+        status_code = 200
+        is_error = False
+        content = b"\\x89PNG\\r\\n\\x1a\\nmock-png-bytes"
+
+    def fake_get(url, headers, timeout):
+        assert url == "https://example.supabase.co/storage/v1/object/flyrank-images/img-storage-test.png"
+        assert headers["apikey"] == "unit-test-key"
+        assert timeout == 15
+        return FakeStorageResponse()
+
+    monkeypatch.setattr("app.main.httpx.get", fake_get)
+    response = client.get("/images/img-storage-test/content")
+    assert response.status_code == 200
+    assert response.content == b"\\x89PNG\\r\\n\\x1a\\nmock-png-bytes"
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_image_content_returns_404_for_unknown_image() -> None:
+    response = client.get("/images/img-does-not-exist/content")
+    assert response.status_code == 404
+
+
 def test_production_api_requires_bearer_token(monkeypatch) -> None:
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.delenv("FLYRANK_TOKEN", raising=False)
