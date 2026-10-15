@@ -48,7 +48,14 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
         text = data["candidates"][0]["content"]["parts"][0]["text"]
         result = json.loads(text)
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
-        raise VisionProviderError("Vision provider request failed. Check the API key, model, quota, and provider status.") from exc
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            raise VisionProviderError(
+                f"Gemini vision API returned HTTP {status}. Check API key permissions, model access, quota, and billing."
+            ) from exc
+        if isinstance(exc, httpx.TimeoutException):
+            raise VisionProviderError("Gemini vision API timed out. Retry later and check provider status.") from exc
+        raise VisionProviderError("Gemini vision API returned an invalid or incomplete response. Check model output and provider status.") from exc
 
     subject = str(result.get("subject", "")).strip()
     category = str(result.get("category", "")).strip()
