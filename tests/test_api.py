@@ -124,13 +124,13 @@ def test_upload_rejects_non_image() -> None:
 
 def test_production_api_requires_bearer_token(monkeypatch) -> None:
     monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.delenv("FLYRANK_API_TOKEN", raising=False)
+    monkeypatch.delenv("FLYRANK_TOKEN", raising=False)
 
     missing_config = client.get("/images")
     assert missing_config.status_code == 503
     assert client.get("/health").status_code == 200
 
-    monkeypatch.setenv("FLYRANK_API_TOKEN", "test-only-token")
+    monkeypatch.setenv("FLYRANK_TOKEN", "test-only-token")
     unauthenticated = client.get("/images")
     assert unauthenticated.status_code == 401
 
