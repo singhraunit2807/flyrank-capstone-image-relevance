@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
@@ -177,6 +177,59 @@ def health() -> dict[str, Any]:
 def list_images() -> dict[str, Any]:
     records = database.load_images()
     return {"count": len(records), "images": records}
+
+
+@app.get("/images/{image_id}/content", response_class=Response)
+def get_image_content(image_id: str) -> Response:
+    """Return the original image bytes without exposing storage credentials."""
+    record = next((item for item in database.load_images() if item["id"] == image_id), None)
+    if record is None:
+        raise HTTPException(status_code=404, detail="image not found")
+
+    image_path = str(record.get("image_path") or "")
+    content_type = str(record.get("content_type") or "application/octet-stream")
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if content_type not in allowed_types:
+        raise HTTPException(status_code=415, detail="Stored image type is not supported")
+
+    if image_path.startswith("supabase://"):
+        storage_ref = image_path.removeprefix("supabase://")
+        bucket, separator, object_path = storage_ref.partition("/")
+        configured_bucket = os.getenv("SUPABASE_STORAGE_BUCKET", "flyrank-images").strip()
+        supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+        if not separator or not object_path or bucket != configured_bucket or ".." in object_path.split("/"):
+            raise HTTPException(status_code=400, detail="Invalid stored image reference")
+        if not supabase_url or not supabase_key:
+            raise HTTPException(status_code=503, detail="Persistent image storage is not configured")
+        url = f"{supabase_url}/storage/v1/object/{quote(bucket, safe='')}/{quote(object_path, safe='/')}"
+        try:
+            response = httpx.get(
+                url,
+                headers={"Authorization": f"Bearer {supabase_key}", "apikey": supabase_key},
+                timeout=15,
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail="Could not retrieve image from persistent storage") from exc
+        if response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Stored image file not found")
+        if response.is_error:
+            raise HTTPException(status_code=502, detail="Could not retrieve image from persistent storage")
+        content = response.content
+    else:
+        if os.getenv("VERCEL"):
+            raise HTTPException(status_code=503, detail="This image is not stored in persistent storage")
+        upload_dir = Path(os.getenv("UPLOAD_DIR", "data/uploads")).resolve()
+        local_path = Path(image_path).resolve()
+        if local_path.parent != upload_dir or not local_path.is_file():
+            raise HTTPException(status_code=404, detail="Stored image file not found")
+        content = local_path.read_bytes()
+
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+    )
 
 
 @app.post("/demo/seed")
